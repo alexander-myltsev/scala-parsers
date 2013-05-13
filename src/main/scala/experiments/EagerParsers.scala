@@ -1,10 +1,11 @@
 package experiments
 
-trait SimpleParsers extends SimpleResults {
+trait EagerParsers extends SimpleResults {
   trait Parser[+T] extends (Input ⇒ Result[T]) {
     def apply(in: Input): Result[T]
 
-    def |[U >: T](p: ⇒ Parser[U]): Parser[U] = new Parser[U] {
+    // NOTE: | is not `p: => Parser[U]`
+    def |[U >: T](p: Parser[U]): Parser[U] = new Parser[U] {
       def apply(in: Input) =
         Parser.this(in) match {
           case Failure(_, _) ⇒ p(in)
@@ -12,7 +13,8 @@ trait SimpleParsers extends SimpleResults {
         }
     }
 
-    def ~[U](p: ⇒ Parser[U]): Parser[Pair[T, U]] = new Parser[Pair[T, U]] {
+    // NOTE: ~ is not `p: => Parser[U]`
+    def ~[U](p: Parser[U]): Parser[Pair[T, U]] = new Parser[Pair[T, U]] {
       def apply(in: Input) = Parser.this(in) match {
         case Success(x, next) ⇒ p(next) match {
           case Success(x2, next2) ⇒ Success((x, x2), next2)
@@ -24,7 +26,7 @@ trait SimpleParsers extends SimpleResults {
   }
 }
 
-trait StringParsers extends SimpleParsers {
+trait EagerStringParsers extends EagerParsers {
   type Input = String
 
   private val EOI = 0.toChar
@@ -45,7 +47,6 @@ trait StringParsers extends SimpleParsers {
   def eoi = accept(EOI)
 }
 
-object OXOParser extends StringParsers {
-  def oxo = accept('o') ~ accept('x') ~ accept('o')
-  def oxos: Parser[Any] = (oxo ~ accept(' ') ~ oxos | oxo)
+object EagerParserSample extends EagerStringParsers {
+  def pars: Parser[Any] = (accept('a') | pars) ~ eoi
 }
