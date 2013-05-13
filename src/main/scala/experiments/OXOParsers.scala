@@ -1,26 +1,22 @@
 package experiments
 
 trait SimpleParsers extends SimpleResults {
-  trait Parser[+T] extends (Input ⇒ Result[T]) {
+  abstract class Parser[+T] extends (Input ⇒ Result[T]) {
     def apply(in: Input): Result[T]
 
-    def |[U >: T](p: ⇒ Parser[U]): Parser[U] = new Parser[U] {
-      def apply(in: Input) =
-        Parser.this(in) match {
-          case Failure(_, _) ⇒ p(in)
-          case Success(x, n) ⇒ Success(x, n)
-        }
+    def flatMap[U](f: T ⇒ Parser[U]): Parser[U] = new Parser[U] {
+      def apply(in: Input) = Parser.this(in) flatMapWithNext (f)
     }
 
-    def ~[U](p: ⇒ Parser[U]): Parser[Pair[T, U]] = new Parser[Pair[T, U]] {
-      def apply(in: Input) = Parser.this(in) match {
-        case Success(x, next) ⇒ p(next) match {
-          case Success(x2, next2) ⇒ Success((x, x2), next2)
-          case Failure(m, n)      ⇒ Failure(m, n)
-        }
-        case Failure(m, n) ⇒ Failure(m, n)
-      }
+    def map[U](f: T ⇒ U): Parser[U] = new Parser[U] {
+      def apply(in: Input) = Parser.this(in) map (f)
     }
+
+    def |[U >: T](p: ⇒ Parser[U]): Parser[U] = new Parser[U] {
+      def apply(in: Input) = Parser.this(in) append p(in)
+    }
+
+    def ~[U](p: ⇒ Parser[U]): Parser[(T, U)] = for (a ← this; b ← p) yield (a, b)
   }
 }
 
@@ -43,9 +39,4 @@ trait StringParsers extends SimpleParsers {
   }
 
   def eoi = accept(EOI)
-}
-
-object OXOParser extends StringParsers {
-  def oxo = accept('o') ~ accept('x') ~ accept('o')
-  def oxos: Parser[Any] = (oxo ~ accept(' ') ~ oxos | oxo)
 }
