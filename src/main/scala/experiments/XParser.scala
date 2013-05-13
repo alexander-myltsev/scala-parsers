@@ -5,8 +5,14 @@ trait SimpleResults {
   trait Result[+T] {
     def next: Input
   }
+
   case class Success[+T](result: T, next: Input) extends Result[T]
   case class Failure(msg: String, next: Input) extends Result[Nothing]
+
+  def isSuccess(r: Result[_]) = r match {
+    case Success(_, _) ⇒ true
+    case Failure(_, _) ⇒ false
+  }
 }
 
 object XParser extends SimpleResults {
@@ -20,8 +26,4 @@ object XParser extends SimpleResults {
     if (in.charAt(0) == c) Success(c, in.substring(1))
     else Failure("expected " + c, in)
   }
-}
-
-class Parsers {
-
 }
